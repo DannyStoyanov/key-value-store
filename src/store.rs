@@ -16,7 +16,7 @@ pub mod store {
         V: Clone,
     {
         fn set(&mut self, key: K, value: V);
-        fn get(&self, key: &K) -> Option<V>;
+        fn get(&self, key: K) -> Option<V>;
         fn remove(&mut self, key: K);
     }
 
@@ -39,7 +39,7 @@ pub mod store {
             self.store.insert(key, value);
         }
 
-        fn get(&self, key: &K) -> Option<V> {
+        fn get(&self, key: K) -> Option<V> {
             self.store.get(&key).cloned()
         }
 
@@ -59,10 +59,10 @@ mod tests {
         let mut store = store.lock().unwrap();
         
         store.set(String::from("name"), String::from("John"));
-        assert_eq!(store.get(&String::from("name")), Some(String::from("John")));
+        assert_eq!(store.get(String::from("name")), Some(String::from("John")));
         
         store.set(String::from("name"), String::from("Sam"));
-        assert_eq!(store.get(&String::from("name")), Some(String::from("Sam")));
+        assert_eq!(store.get(String::from("name")), Some(String::from("Sam")));
     }
 
     #[test]
@@ -73,10 +73,10 @@ mod tests {
         store.set(String::from("name"), String::from("John"));
         store.set(String::from("age"), String::from("20"));
 
-        assert_eq!(store.get(&String::from("name")), Some(String::from("John")));
-        assert_eq!(store.get(&String::from("age")), Some(String::from("20")));
+        assert_eq!(store.get(String::from("name")), Some(String::from("John")));
+        assert_eq!(store.get(String::from("age")), Some(String::from("20")));
         
-        assert_eq!(store.get(&String::from("nonExisting")), None);
+        assert_eq!(store.get(String::from("nonExisting")), None);
     }
 
     #[test]
@@ -88,9 +88,9 @@ mod tests {
         store.set(String::from("age"), String::from("20"));
 
         store.remove(String::from("name"));
-        assert_eq!(store.get(&String::from("name")), None);
+        assert_eq!(store.get(String::from("name")), None);
 
         store.remove(String::from("nonExisting"));
-        assert_eq!(store.get(&String::from("nonExisting")), None);
+        assert_eq!(store.get(String::from("nonExisting")), None);
     }
 }
