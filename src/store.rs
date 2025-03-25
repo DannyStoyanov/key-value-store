@@ -57,7 +57,10 @@ pub mod store {
 
 #[cfg(test)]
 mod tests {
-    use crate::store::store::{getStore, Store};
+    use std::fs;
+    use crate::store::store::{getStore, KeyValueStore, Store};
+
+    const FILENAME: &str = "test-file.json";
 
     #[test]
     fn test_set() {
@@ -95,5 +98,26 @@ mod tests {
 
         store.remove(String::from("nonExisting"));
         assert_eq!(store.get(String::from("nonExisting")), None);
+    }
+
+    #[test]
+    fn test_save_and_load() {
+        let mut store = getStore();
+
+        store.set("key".to_string(), "value".to_string());
+
+        assert!(store.saveToFile(FILENAME).is_ok());
+
+        let store = KeyValueStore::loadFromFile(FILENAME);
+
+        assert!(store.is_ok());
+
+        fs::remove_file(FILENAME).expect("Failed to delete test file");
+    }
+
+    #[test]
+    fn test_load_from_nonexisting_file() {
+        let store = KeyValueStore::loadFromFile("nonexisting.json");
+        assert!(store.is_err(), "Expected error for nonexistent file, but got success");
     }
 }
