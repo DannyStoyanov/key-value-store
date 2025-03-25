@@ -1,50 +1,56 @@
 pub mod store {
     use std::collections::HashMap;
-    use std::hash::Hash;
-    use std::sync::{Mutex, OnceLock};
+    use std::fs::{self, File};
+    use std::io::{Error, Read};
 
-    static DB_INSTANCE: OnceLock<Mutex<KeyValueStore<String, String>>> = OnceLock::new();
-    
-    pub fn getStore() -> &'static Mutex<KeyValueStore<String, String>> {
-        // TODO: Handle unsafe unwrapping with unwrap()
-        DB_INSTANCE.get_or_init(|| Mutex::new(KeyValueStore::new()))
+    pub fn getStore() -> KeyValueStore {
+        KeyValueStore::new()
     }
 
-    pub trait Store<K, V>
-    where
-        K: Eq + Hash,
-        V: Clone,
-    {
-        fn set(&mut self, key: K, value: V);
-        fn get(&self, key: K) -> Option<V>;
-        fn remove(&mut self, key: K);
+    pub trait Store {
+        fn set(&mut self, key: String, value: String);
+        fn get(&self, key: String) -> Option<String>;
+        fn remove(&mut self, key: String);
+        fn saveToFile(&self, filename: &str) -> Result<(), Error>;
+        fn loadFromFile(filename: &str) -> Result<KeyValueStore, Error>;
     }
 
-    pub struct KeyValueStore<K, V>
-    where
-        K: Eq + Hash,
-        V: Clone,
-    {
-        store: HashMap<K, V>,
+    pub struct KeyValueStore {
+        store: HashMap<String, String>,
     }
 
-    impl<K: Eq + Hash, V: Clone> KeyValueStore<K, V> {
-        pub fn new() -> Self {
-            Self { store: HashMap::new() }
+    impl KeyValueStore {
+        fn new() -> Self {
+            Self {
+                store: HashMap::new(),
+            }
         }
     }
 
-    impl<K: Eq + Hash, V: Clone> Store<K, V> for KeyValueStore<K, V> {
-        fn set(&mut self, key: K, value: V) -> () {
+    impl Store for KeyValueStore {
+        fn set(&mut self, key: String, value: String) -> () {
             self.store.insert(key, value);
         }
 
-        fn get(&self, key: K) -> Option<V> {
+        fn get(&self, key: String) -> Option<String> {
             self.store.get(&key).cloned()
         }
 
-        fn remove(&mut self, key: K) -> () {
+        fn remove(&mut self, key: String) -> () {
             self.store.remove(&key);
+        }
+
+        fn saveToFile(&self, filename: &str) -> Result<(), Error> {
+            let json = serde_json::to_string(&self.store)?;
+            fs::write(filename, json)
+        }
+
+        fn loadFromFile(filename: &str) -> Result<KeyValueStore, Error> {
+            let mut file = File::open(filename)?;
+            let mut content = String::new();
+            file.read_to_string(&mut content)?;
+            let store: HashMap<String, String> = serde_json::from_str(&content)?;
+            Ok(KeyValueStore { store })
         }
     }
 }
@@ -55,35 +61,32 @@ mod tests {
 
     #[test]
     fn test_set() {
-        let store = getStore();
-        let mut store = store.lock().unwrap();
-        
+        let mut store = getStore();
+
         store.set(String::from("name"), String::from("John"));
         assert_eq!(store.get(String::from("name")), Some(String::from("John")));
-        
+
         store.set(String::from("name"), String::from("Sam"));
         assert_eq!(store.get(String::from("name")), Some(String::from("Sam")));
     }
 
     #[test]
     fn test_get() {
-        let store = getStore();
-        let mut store = store.lock().unwrap();
-        
+        let mut store = getStore();
+
         store.set(String::from("name"), String::from("John"));
         store.set(String::from("age"), String::from("20"));
 
         assert_eq!(store.get(String::from("name")), Some(String::from("John")));
         assert_eq!(store.get(String::from("age")), Some(String::from("20")));
-        
+
         assert_eq!(store.get(String::from("nonExisting")), None);
     }
 
     #[test]
     fn test_remove() {
-        let store = getStore();
-        let mut store = store.lock().unwrap();
-        
+        let mut store = getStore();
+
         store.set(String::from("name"), String::from("John"));
         store.set(String::from("age"), String::from("20"));
 
