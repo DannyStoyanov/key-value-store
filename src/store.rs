@@ -1,9 +1,12 @@
 pub mod store {
+
     use std::collections::HashMap;
     use std::fs::{self, File};
     use std::io::{Error, Read};
 
     use serde_json::Value;
+
+    use crate::fileformat::fileformat::FileFormat;
 
     pub fn get_store() -> KeyValueStore {
         KeyValueStore::new()
@@ -13,8 +16,8 @@ pub mod store {
         fn set(&mut self, key: String, value: Value);
         fn get(&self, key: String) -> Option<Value>;
         fn remove(&mut self, key: String);
-        fn save_to_file(&self, filename: &str) -> Result<(), Error>; // TODO: add file format option
-        fn load_from_file(filename: &str) -> Result<KeyValueStore, Error>;
+        fn save_to_file(&self, filename: &str, format: FileFormat) -> Result<(), Error>; // TODO: add file format option
+        fn load_from_file(filename: &str, format: FileFormat) -> Result<KeyValueStore, Error>;
     }
 
     pub struct KeyValueStore {
@@ -42,13 +45,20 @@ pub mod store {
             self.store.remove(&key);
         }
 
-        fn save_to_file(&self, filename: &str) -> Result<(), Error> {
-            let json = serde_json::to_string(&self.store)?;
-            fs::write(filename, json)
+        fn save_to_file(&self, filename: &str, format: FileFormat) -> Result<(), Error> {
+            match format {
+                FileFormat::JSON => {
+                    let content = serde_json::to_string(&self.store)?;
+                    fs::write(format!("{}.{}", filename, format), content)
+                },
+                FileFormat::CSV => {
+                    todo!()
+                }
+            }
         }
 
-        fn load_from_file(filename: &str) -> Result<KeyValueStore, Error> {
-            let mut file = File::open(filename)?;
+        fn load_from_file(filename: &str, format: FileFormat) -> Result<KeyValueStore, Error> {
+            let mut file = File::open(format!("{}.{}", filename, format))?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
             let store: HashMap<String, Value> = serde_json::from_str(&content)?;
@@ -61,9 +71,9 @@ pub mod store {
 mod tests {
     use std::fs;
 
-    use crate::store::store::{get_store, KeyValueStore, Store};
+    use crate::{fileformat::fileformat::FileFormat, store::store::{get_store, KeyValueStore, Store}};
 
-    const FILENAME: &str = "test-file.json";
+    const FILENAME: &str = "test-file";
 
     #[test]
     fn test_set() {
@@ -107,20 +117,20 @@ mod tests {
     fn test_save_and_load() {
         let mut store = get_store();
 
-        store.set("key".into(), "value".into());
+        store.set("name".into(), "John".into());
 
-        assert!(store.save_to_file(FILENAME).is_ok());
+        assert!(store.save_to_file(FILENAME, FileFormat::JSON).is_ok());
 
-        let store = KeyValueStore::load_from_file(FILENAME);
+        let store = KeyValueStore::load_from_file(FILENAME, FileFormat::JSON);
 
         assert!(store.is_ok());
 
-        fs::remove_file(FILENAME).expect("Failed to delete test file");
+        fs::remove_file(format!("{}.{}", FILENAME, FileFormat::JSON)).expect("Failed to delete test file");
     }
 
     #[test]
     fn test_load_from_nonexisting_file() {
-        let store = KeyValueStore::load_from_file("nonexisting.json");
+        let store = KeyValueStore::load_from_file("nonexisting", FileFormat::JSON);
         assert!(store.is_err(), "Expected error for nonexistent file, but got success");
     }
 }
