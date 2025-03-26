@@ -3,36 +3,38 @@ pub mod store {
     use std::fs::{self, File};
     use std::io::{Error, Read};
 
+    use serde_json::Value;
+
     pub fn get_store() -> KeyValueStore {
         KeyValueStore::new()
     }
 
     pub trait Store {
-        fn set(&mut self, key: String, value: String);
-        fn get(&self, key: String) -> Option<String>;
+        fn set(&mut self, key: String, value: Value);
+        fn get(&self, key: String) -> Option<Value>;
         fn remove(&mut self, key: String);
         fn save_to_file(&self, filename: &str) -> Result<(), Error>;
         fn load_from_file(filename: &str) -> Result<KeyValueStore, Error>;
     }
 
     pub struct KeyValueStore {
-        store: HashMap<String, String>,
+        store: HashMap<String, serde_json::Value>,
     }
 
     impl KeyValueStore {
         fn new() -> Self {
             Self {
-                store: HashMap::new(),
+                store: HashMap::<String, Value>::new(),
             }
         }
     }
 
     impl Store for KeyValueStore {
-        fn set(&mut self, key: String, value: String) -> () {
+        fn set(&mut self, key: String, value: Value) -> () {
             self.store.insert(key, value);
         }
 
-        fn get(&self, key: String) -> Option<String> {
+        fn get(&self, key: String) -> Option<Value> {
             self.store.get(&key).cloned()
         }
 
@@ -49,7 +51,7 @@ pub mod store {
             let mut file = File::open(filename)?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
-            let store: HashMap<String, String> = serde_json::from_str(&content)?;
+            let store: HashMap<String, Value> = serde_json::from_str(&content)?;
             Ok(KeyValueStore { store })
         }
     }
@@ -58,6 +60,8 @@ pub mod store {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use serde_json::Value;
+
     use crate::store::store::{get_store, KeyValueStore, Store};
 
     const FILENAME: &str = "test-file.json";
@@ -66,22 +70,22 @@ mod tests {
     fn test_set() {
         let mut store = get_store();
 
-        store.set(String::from("name"), String::from("John"));
-        assert_eq!(store.get(String::from("name")), Some(String::from("John")));
+        store.set(String::from("name"), Value::String(String::from("John")));
+        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("John"))));
 
-        store.set(String::from("name"), String::from("Sam"));
-        assert_eq!(store.get(String::from("name")), Some(String::from("Sam")));
+        store.set(String::from("name"), Value::String(String::from("Sam")));
+        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("Sam"))));
     }
 
     #[test]
     fn test_get() {
         let mut store = get_store();
 
-        store.set(String::from("name"), String::from("John"));
-        store.set(String::from("age"), String::from("20"));
+        store.set(String::from("name"), Value::String(String::from("John")));
+        store.set(String::from("age"), Value::String(String::from("20")));
 
-        assert_eq!(store.get(String::from("name")), Some(String::from("John")));
-        assert_eq!(store.get(String::from("age")), Some(String::from("20")));
+        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("John"))));
+        assert_eq!(store.get(String::from("age")), Some(Value::String(String::from("20"))));
 
         assert_eq!(store.get(String::from("nonExisting")), None);
     }
@@ -90,8 +94,8 @@ mod tests {
     fn test_remove() {
         let mut store = get_store();
 
-        store.set(String::from("name"), String::from("John"));
-        store.set(String::from("age"), String::from("20"));
+        store.set(String::from("name"), Value::String(String::from("John")));
+        store.set(String::from("age"), Value::String(String::from("20")));
 
         store.remove(String::from("name"));
         assert_eq!(store.get(String::from("name")), None);
@@ -104,7 +108,7 @@ mod tests {
     fn test_save_and_load() {
         let mut store = get_store();
 
-        store.set("key".to_string(), "value".to_string());
+        store.set("key".to_string(), Value::String(String::from("value")));
 
         assert!(store.save_to_file(FILENAME).is_ok());
 
