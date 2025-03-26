@@ -13,12 +13,12 @@ pub mod store {
         fn set(&mut self, key: String, value: Value);
         fn get(&self, key: String) -> Option<Value>;
         fn remove(&mut self, key: String);
-        fn save_to_file(&self, filename: &str) -> Result<(), Error>;
+        fn save_to_file(&self, filename: &str) -> Result<(), Error>; // TODO: add file format option
         fn load_from_file(filename: &str) -> Result<KeyValueStore, Error>;
     }
 
     pub struct KeyValueStore {
-        store: HashMap<String, serde_json::Value>,
+        store: HashMap<String, Value>,
     }
 
     impl KeyValueStore {
@@ -60,7 +60,6 @@ pub mod store {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use serde_json::Value;
 
     use crate::store::store::{get_store, KeyValueStore, Store};
 
@@ -70,45 +69,45 @@ mod tests {
     fn test_set() {
         let mut store = get_store();
 
-        store.set(String::from("name"), Value::String(String::from("John")));
-        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("John"))));
+        store.set("name".into(), "John".into());
+        assert_eq!(store.get("name".into()), Some("John".into()));
 
-        store.set(String::from("name"), Value::String(String::from("Sam")));
-        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("Sam"))));
+        store.set("name".into(), "Sam".into());
+        assert_eq!(store.get("name".into()), Some("Sam".into()));
     }
 
     #[test]
     fn test_get() {
         let mut store = get_store();
 
-        store.set(String::from("name"), Value::String(String::from("John")));
-        store.set(String::from("age"), Value::String(String::from("20")));
+        store.set("name".into(), "John".into());
+        store.set("age".into(), 25.into());
 
-        assert_eq!(store.get(String::from("name")), Some(Value::String(String::from("John"))));
-        assert_eq!(store.get(String::from("age")), Some(Value::String(String::from("20"))));
+        assert_eq!(store.get("name".into()), Some("John".into()));
+        assert_eq!(store.get("age".into()), Some(25.into()));
 
-        assert_eq!(store.get(String::from("nonExisting")), None);
+        assert_eq!(store.get("nonExisting".into()), None);
     }
 
     #[test]
     fn test_remove() {
         let mut store = get_store();
 
-        store.set(String::from("name"), Value::String(String::from("John")));
-        store.set(String::from("age"), Value::String(String::from("20")));
+        store.set("name".into(), "John".into());
+        store.set("age".into(), 25.into());
 
-        store.remove(String::from("name"));
-        assert_eq!(store.get(String::from("name")), None);
+        store.remove("name".into());
+        assert_eq!(store.get("name".into()), None);
 
-        store.remove(String::from("nonExisting"));
-        assert_eq!(store.get(String::from("nonExisting")), None);
+        store.remove("nonExisting".into());
+        assert_eq!(store.get("nonExisting".into()), None);
     }
 
     #[test]
     fn test_save_and_load() {
         let mut store = get_store();
 
-        store.set("key".to_string(), Value::String(String::from("value")));
+        store.set("key".into(), "value".into());
 
         assert!(store.save_to_file(FILENAME).is_ok());
 
