@@ -3,7 +3,7 @@ pub mod store {
     use std::fs::{self, File};
     use std::io::{Error, Read};
 
-    pub fn getStore() -> KeyValueStore {
+    pub fn get_store() -> KeyValueStore {
         KeyValueStore::new()
     }
 
@@ -11,8 +11,8 @@ pub mod store {
         fn set(&mut self, key: String, value: String);
         fn get(&self, key: String) -> Option<String>;
         fn remove(&mut self, key: String);
-        fn saveToFile(&self, filename: &str) -> Result<(), Error>;
-        fn loadFromFile(filename: &str) -> Result<KeyValueStore, Error>;
+        fn save_to_file(&self, filename: &str) -> Result<(), Error>;
+        fn load_from_file(filename: &str) -> Result<KeyValueStore, Error>;
     }
 
     pub struct KeyValueStore {
@@ -40,12 +40,12 @@ pub mod store {
             self.store.remove(&key);
         }
 
-        fn saveToFile(&self, filename: &str) -> Result<(), Error> {
+        fn save_to_file(&self, filename: &str) -> Result<(), Error> {
             let json = serde_json::to_string(&self.store)?;
             fs::write(filename, json)
         }
 
-        fn loadFromFile(filename: &str) -> Result<KeyValueStore, Error> {
+        fn load_from_file(filename: &str) -> Result<KeyValueStore, Error> {
             let mut file = File::open(filename)?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
@@ -58,13 +58,13 @@ pub mod store {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use crate::store::store::{getStore, KeyValueStore, Store};
+    use crate::store::store::{get_store, KeyValueStore, Store};
 
     const FILENAME: &str = "test-file.json";
 
     #[test]
     fn test_set() {
-        let mut store = getStore();
+        let mut store = get_store();
 
         store.set(String::from("name"), String::from("John"));
         assert_eq!(store.get(String::from("name")), Some(String::from("John")));
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let mut store = getStore();
+        let mut store = get_store();
 
         store.set(String::from("name"), String::from("John"));
         store.set(String::from("age"), String::from("20"));
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_remove() {
-        let mut store = getStore();
+        let mut store = get_store();
 
         store.set(String::from("name"), String::from("John"));
         store.set(String::from("age"), String::from("20"));
@@ -102,13 +102,13 @@ mod tests {
 
     #[test]
     fn test_save_and_load() {
-        let mut store = getStore();
+        let mut store = get_store();
 
         store.set("key".to_string(), "value".to_string());
 
-        assert!(store.saveToFile(FILENAME).is_ok());
+        assert!(store.save_to_file(FILENAME).is_ok());
 
-        let store = KeyValueStore::loadFromFile(FILENAME);
+        let store = KeyValueStore::load_from_file(FILENAME);
 
         assert!(store.is_ok());
 
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_load_from_nonexisting_file() {
-        let store = KeyValueStore::loadFromFile("nonexisting.json");
+        let store = KeyValueStore::load_from_file("nonexisting.json");
         assert!(store.is_err(), "Expected error for nonexistent file, but got success");
     }
 }
