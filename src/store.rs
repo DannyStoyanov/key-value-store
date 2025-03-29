@@ -16,7 +16,7 @@ pub mod store {
     pub trait Store {
         fn set(&mut self, key: String, value: Value);
         fn get(&self, key: String) -> Option<Value>;
-        fn remove(&mut self, key: String);
+        fn remove(&mut self, key: &String);
         fn save_to_file(&self, filename: &str, format: &FileFormat) -> Result<(), Error>; // TODO: add file format option
         fn load_from_file(filename: &str, format: &FileFormat) -> Result<KeyValueStore, Error>;
     }
@@ -42,8 +42,8 @@ pub mod store {
             self.store.get(&key).cloned()
         }
 
-        fn remove(&mut self, key: String) -> () {
-            self.store.remove(&key);
+        fn remove(&mut self, key: &String) -> () {
+            self.store.remove(key);
         }
 
         fn save_to_file(&self, filename: &str, format: &FileFormat) -> Result<(), Error> {
@@ -110,9 +110,13 @@ pub mod store {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::{self};
+    use std::{
+        fmt::{self},
+        fs::{self},
+    };
 
     use rstest::rstest;
+    use serde_json::Value;
 
     use crate::{
         fileformat::fileformat::FileFormat,
@@ -121,42 +125,70 @@ mod tests {
 
     const FILENAME: &str = "test-file";
 
-    #[test]
-    fn test_set() {
-        let mut store = get_store();
+    #[derive(Clone)]
+    struct Address<'a> {
+        city: &'a str,
+        street: &'a str,
+        street_number: u32,
+    }
 
+    impl fmt::Display for Address<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "({}, {} {})", self.city, self.street, self.street_number)
+        }
+    }
+
+    const TEST_ADDRESS: Address<'_> = Address {
+        city: "NYC",
+        street: "Karlston",
+        street_number: 12_u32,
+    };
+
+    fn setup_store(store: &mut KeyValueStore) {
         store.set("name".into(), "John".into());
-        assert_eq!(store.get("name".into()), Some("John".into()));
-
-        store.set("name".into(), "Sam".into());
-        assert_eq!(store.get("name".into()), Some("Sam".into()));
+        store.set("age".into(), 26.into());
+        store.set("married".into(), true.into());
+        store.set("citizenships".into(), ["American", "Swiss"].into());
+        store.set("address".into(), TEST_ADDRESS.clone().to_string().into()); // TODO: fix to persist the object itself, not its display value(aka String)
+        store.set("job_occupation".into(), Value::Null);
     }
 
     #[test]
-    fn test_get() {
+    fn test_set_and_get() {
         let mut store = get_store();
+        setup_store(&mut store);
 
-        store.set("name".into(), "John".into());
-        store.set("age".into(), 25.into());
-
+        // String
         assert_eq!(store.get("name".into()), Some("John".into()));
-        assert_eq!(store.get("age".into()), Some(25.into()));
-
-        assert_eq!(store.get("nonExisting".into()), None);
+        // Number
+        assert_eq!(store.get("age".into()), Some(26.into()));
+        // Bool
+        assert_eq!(store.get("married".into()), Some(true.into()));
+        // Array
+        assert_eq!(
+            store.get("citizenships".into()),
+            Some(["American", "Swiss"].into())
+        );
+        // Object
+        assert_eq!(
+            store.get("address".into()),
+            Some(TEST_ADDRESS.to_string().into())
+        );
+        // Null
+        assert_eq!(store.get("job_occupation".into()), Some(Value::Null));
     }
 
     #[test]
     fn test_remove() {
         let mut store = get_store();
+        setup_store(&mut store);
 
-        store.set("name".into(), "John".into());
-        store.set("age".into(), 25.into());
+        let keys: [&str; 6] = ["name", "age", "married", "citizenships", "address", "job_occupation"];
 
-        store.remove("name".into());
-        assert_eq!(store.get("name".into()), None);
-
-        store.remove("nonExisting".into());
-        assert_eq!(store.get("nonExisting".into()), None);
+        for key in keys {
+            store.remove(&key.to_string().into());
+            assert_eq!(store.get(key.into()), None);
+        }
     }
 
     #[rstest]
@@ -164,8 +196,7 @@ mod tests {
     #[case(FileFormat::CSV)]
     fn test_save_and_load(#[case] file_format: FileFormat) {
         let mut store = get_store();
-
-        store.set("name".into(), "John".into());
+        setup_store(&mut store);
 
         assert!(store.save_to_file(FILENAME, &file_format).is_ok());
 
