@@ -17,7 +17,7 @@ pub mod store {
         fn set(&mut self, key: String, value: Value);
         fn get(&self, key: String) -> Option<Value>;
         fn remove(&mut self, key: &String);
-        fn save_to_file(&self, filename: &str, format: &FileFormat) -> Result<(), Error>; // TODO: add file format option
+        fn save_to_file(&self, filename: &str, format: &FileFormat) -> Result<(), Error>;
         fn load_from_file(filename: &str, format: &FileFormat) -> Result<KeyValueStore, Error>;
     }
 
